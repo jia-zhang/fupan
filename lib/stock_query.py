@@ -93,12 +93,8 @@ class StockQuery():
             stock_dict = {}
             stock_dict['float_shares'] = str(float_shares)  
             stock_dict['stock_name'] = str(stock_name)
-            stock_dict['stock_name'] = str(stock_name)
+            stock_dict['market_capital'] = str(market_capital)
             master_dict[s] = stock_dict
-            #if i==0:
-            #    f.write("%s"%(str(master_dict)))
-            #else:
-            #    f.write(",%s"%(str(master_dict)))
             i = i+1
             if i==3:
                 break
