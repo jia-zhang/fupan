@@ -96,7 +96,7 @@ class StockQuery():
             stock_dict['market_capital'] = str(market_capital)
             master_dict[s] = stock_dict
             i = i+1
-            if i==3:
+            if i==30:
                 break
         f.write(json.dumps(master_dict))
         #f.write('}')
