@@ -2,6 +2,7 @@ import requests
 import re
 import time
 import os
+import json
 
 class StockQuery():
     def __init__(self):
@@ -101,7 +102,7 @@ class StockQuery():
             i = i+1
             if i==3:
                 break
-        f.write(str(master_dict))
+        f.write(json.dumps(master_dict))
         #f.write('}')
         f.close()
 
