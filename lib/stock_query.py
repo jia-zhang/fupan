@@ -3,6 +3,7 @@ import re
 import time
 import os
 import json
+import random
 
 class StockQuery():
     def __init__(self):
@@ -59,6 +60,9 @@ class StockQuery():
         replace('high','"high"').replace('close','"close"').replace('volume','"volume"'))[-1]['day']
     
     def dump_stock_dynamic(self):
+        '''
+        Get stock dynamic info, 10 days open,high,low,close,volume
+        '''
         s_list = self.get_stock_list_from_file('stocks.csv')
         i=0
         for s in s_list:
@@ -74,7 +78,10 @@ class StockQuery():
                 time.sleep(1)
     
     def dump_stock_static(self):
-        s_list = self.get_stock_list_from_file('stocks.csv')
+        '''
+        Get stock static info, eg: name, float_shares, market_capital to one file.
+        '''
+        s_list = self.get_stock_list_from_file('d:\\jia\\jiazzz\\fupan\\lib\\stocks.csv')
         headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
         i=0
         f = open("stock_static.json",'w')
@@ -87,7 +94,7 @@ class StockQuery():
                 print("Get code 404 on stock %s"%(s))
                 continue
             resp.encoding = 'utf-8'
-            float_shares = re.compile(r'"float_shares":(\d*?),').findall(resp.text)[0]
+            float_shares = re.compile(r'"float_shares":(.*?),').findall(resp.text)[0]
             stock_name = re.compile(r'"name":(.*?),').findall(resp.text)[0]      
             market_capital = re.compile(r'"market_capital":(.*?),').findall(resp.text)[0]             
             stock_dict = {}
@@ -95,9 +102,10 @@ class StockQuery():
             stock_dict['stock_name'] = str(stock_name)
             stock_dict['market_capital'] = str(market_capital)
             master_dict[s] = stock_dict
-            i = i+1
-            if i==300:
-                break
+            #i = i+1
+            #if i==3:
+            #    break
+            time.sleep(random.randint(1,5))
         f.write(json.dumps(master_dict))
         #f.write('}')
         f.close()
