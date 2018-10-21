@@ -77,17 +77,24 @@ class StockQuery():
             if (i%10==0):
                 time.sleep(1)
     
+<<<<<<< HEAD
     def dump_stock_static(self):
         '''
         Get stock static info, eg: name, float_shares, market_capital to one file.
         '''
         s_list = self.get_stock_list_from_file('d:\\jia\\jiazzz\\fupan\\lib\\stocks.csv')
+=======
+    def dump_stock_static1(self):
+        s_list = self.get_stock_list_from_file('incomplete1.csv')
+>>>>>>> refs/remotes/origin/master
         headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
         i=0
-        f = open("stock_static.json",'w')
+        f = open("stock_static.json",'a')
+        incomplete_f = open('incomplete2.csv','w')
         #f.write('{')
         master_dict = {}
         for s in s_list:
+<<<<<<< HEAD
             print("Dumping stock static %s..."%(s))
             resp = requests.get("https://xueqiu.com/S/%s"%(s),headers=headers)
             if (resp.status_code==404):
@@ -108,8 +115,64 @@ class StockQuery():
             time.sleep(random.randint(1,5))
         f.write(json.dumps(master_dict))
         #f.write('}')
+=======
+            #print("Dumping stock static %s..."%(s))
+            try:
+                resp = requests.get("https://xueqiu.com/S/%s"%(s),headers=headers)
+                if (resp.status_code==404):
+                    print("Get code 404 on stock %s"%(s))                    
+                    continue
+                elif(resp.status_code!=200):
+                    print("Get code %s on stock %s"%(resp.status_code,s))
+                    incomplete_f.write("%s,"%(s))
+                    continue
+                resp.encoding = 'utf-8'
+                float_shares = re.compile(r'"float_shares":(\d*?),').findall(resp.text)[0]
+                stock_name = re.compile(r'"name":(.*?),').findall(resp.text)[0]      
+                market_capital = re.compile(r'"market_capital":(.*?),').findall(resp.text)[0]             
+                stock_dict = {}
+                stock_dict['float_shares'] = str(float_shares)  
+                stock_dict['stock_name'] = str(stock_name)
+                stock_dict['market_capital'] = str(market_capital)
+                master_dict[s] = stock_dict
+            except:
+                print("exception!")
+        f.write(json.dumps(master_dict)) 
+        incomplete_f.close()               
+>>>>>>> refs/remotes/origin/master
         f.close()
 
+    def dump_stock_static(self):
+        s_list = self.get_stock_list_from_file('valid_stock.csv')
+        headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
+        i=0
+        for s in s_list:
+            print("Dumping stock static %s..."%(s))
+            if (os.path.exists("./data/%s.static.json"%(s))):
+                print("%s already exists, skip"%(s))
+                continue
+            try:
+                master_dict = {}
+                resp = requests.get("https://xueqiu.com/S/%s"%(s),headers=headers)
+                if (resp.status_code==404):
+                    print("Get code 404 on stock %s"%(s))                    
+                    continue
+                elif(resp.status_code!=200):
+                    print("Get code %s on stock %s"%(resp.status_code,s))
+                    continue
+                resp.encoding = 'utf-8'
+                float_shares = re.compile(r'"float_shares":(\d*?),').findall(resp.text)[0]
+                stock_name = re.compile(r'"name":(.*?),').findall(resp.text)[0]      
+                market_capital = re.compile(r'"market_capital":(.*?),').findall(resp.text)[0]             
+                stock_dict = {}
+                stock_dict['float_shares'] = str(float_shares)  
+                stock_dict['stock_name'] = str(stock_name)
+                stock_dict['market_capital'] = str(market_capital)
+                master_dict[s] = stock_dict
+                with open("./data/%s.static.json"%(s),'w') as f:
+                    f.write(json.dumps(master_dict))
+            except:
+                print("exception on stock %s!"%(s))
     
 
 if __name__ == '__main__':
