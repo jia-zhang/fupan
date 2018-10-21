@@ -167,7 +167,7 @@ class StockAnalyze():
         for s in stock_list:
             delta = self.get_delta(s,-5)
             print("%s:%s"%(s,delta))
-            if(delta>20):
+            if(delta>delta_critiria and s not in ret):
                 ret.append(s)
         print("End of second round, found %s stocks"%(len(ret)))
         print("============================\n\n")
