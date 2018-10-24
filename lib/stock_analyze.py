@@ -24,7 +24,7 @@ class StockAnalyze():
         s_list = output.split(',')
         ret = []
         for s in s_list:
-            file_name = "./data/%s.json"%(s)
+            file_name = "./data/dynamic/%s.json.d"%(s)
             with open(file_name,'r') as f:
                 output = f.read()
             if output == "null":
@@ -37,7 +37,7 @@ class StockAnalyze():
         return ret
 
     def get_name_from_id(self,stock_id):
-        file_name = "./data/%s.static.json"%(stock_id)
+        file_name = "./data/static/%s.static.json"%(stock_id)
         if not os.path.exists(file_name):
             return 0
         f = open(file_name,'r')
@@ -50,7 +50,7 @@ class StockAnalyze():
         获取day_num天前到目前收盘价的delta值，以%表示。
         如果day_num=0,表示今天的收盘价和今天收盘价的差值，所以会返回0
         '''
-        file_name = "./data/%s.json"%(stock_id)
+        file_name = "./data/dynamic/%s.json.d"%(stock_id)
         if not os.path.exists(file_name):
             return 0
         with open(file_name,'r') as f:
@@ -77,7 +77,7 @@ class StockAnalyze():
         获取某股票前day_num的当天涨跌幅。需要保证动态数据json文件里面有值，否则会报错(to be fixed)
         比如，获取前一天的get_increase_amount('sz000002',-1)
         '''
-        file_name = "./data/%s.json"%(stock_id)
+        file_name = "./data/dynamic/%s.json.d"%(stock_id)
         if not os.path.exists(file_name):
             return 0
         with open(file_name,'r') as f:
@@ -102,7 +102,7 @@ class StockAnalyze():
         '''
         获取某股票前day_num的当天换手率。
         '''
-        file_name = "./data/%s.json"%(stock_id)
+        file_name = "./data/dynamic/%s.json.d"%(stock_id)
         if not os.path.exists(file_name):
             return 0
         with open(file_name,'r') as f:
@@ -161,11 +161,11 @@ class StockAnalyze():
         print("============================\n\n")
         return ret
     
-    def second_round(self,stock_list,delta_critiria):
+    def second_round(self,stock_list,delta_day,delta_critiria):
         print("Second round, get delta>%s stocks..."%(delta_critiria))
         ret=[]
         for s in stock_list:
-            delta = self.get_delta(s,-5)
+            delta = self.get_delta(s,0-delta_day)
             print("%s:%s"%(s,delta))
             if(delta>delta_critiria and s not in ret):
                 ret.append(s)
@@ -180,5 +180,8 @@ if __name__ == '__main__':
     #print(a.get_suspend_stocks())
     tmp = a.first_round(5,10,9)
     print(tmp)
-    print(a.second_round(tmp,15))
+    tmp1 = a.second_round(tmp,3,20)
+    print(tmp1)
+    tmp2 = a.second_round(tmp,5,10)
+    print(tmp2)
     
