@@ -6,12 +6,12 @@ import json
 from stock_util import StockUtil
 from logger import Logger
 
-class StockAnalyze():
+class StockFilter():
     def __init__(self):
         #headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
         #detail_url = "http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=sh000001&scale=240&ma=no&datalen=5"
         #resp = requests.get(detail_url)
-        self.logger = Logger("StockAnalyze")
+        self.logger = Logger("StockFilter")
         self.util = StockUtil()
         #self.last_trading_day = eval(resp.text.replace('day','"day"').replace('open','"open"').replace('low','"low"').\
         #replace('high','"high"').replace('close','"close"').replace('volume','"volume"'))[-1]['day']
@@ -34,23 +34,6 @@ class StockAnalyze():
                 #self.logger.info("%s:%s"%(self.util.get_stock_name_from_id(s),volume))
                 ret.append(s)
         return ret
-        
-    def first_round(self,stock_list,day_num,volume_critiria,increase_critiria):
-        '''
-        五天内的active stock
-        '''
-        self.logger.info("First round, get active volume>= %s and daily_increase>=%s stock in %s days"%(day_num,volume_critiria,increase_critiria))
-        #days = [0,1,2,3,4]
-        ret = []
-        for day in range(day_num):
-            self.logger.info("Day %s"%(day))
-            tmp = a.get_active_stock(day,volume_critiria,increase_critiria)
-            self.logger.info(tmp)
-            self.logger.info("==============\n")
-            ret.extend(tmp)
-        self.logger.info("End of first round, found %s stocks"%(len(ret)))
-        self.logger.info("============================\n\n")
-        return ret
     
     def get_delta_within_days(self,stock_list,delta_day,delta_critiria):
         '''
@@ -71,7 +54,7 @@ class StockAnalyze():
 
 
 if __name__ == '__main__':
-    a = StockAnalyze()
+    a = StockFilter()
     stock_list = a.util.get_stock_list_from_file('stocks.csv')
     #print(a.get_suspend_stocks())
     #tmp = a.first_round(5,10,9)

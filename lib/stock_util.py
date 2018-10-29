@@ -157,3 +157,32 @@ class StockUtil():
         except:
             self.logger.info("stock_id: %s,float_share is zero"%(stock_id))
         return ret
+    
+    def add_propery(self,stock_id,property_dict):
+        '''
+        为某股票添加一个新的字段，会改写股票的static文件。
+        #t.add_propery('sh600000',{"tag1":{"ddd":"ccc"}})    
+        '''
+        file_name = self.get_static_file_from_id(stock_id)
+        f = open(file_name,'r',encoding='utf-8')
+        info = json.load(f)
+        f.close()
+        for key in property_dict.keys():
+            info[stock_id][key] = property_dict[key]
+        self.logger.info(info)
+        with open(file_name,'w') as f:
+            f.write(json.dumps(info))
+    
+    def remove_property(self,stock_id,property_key):
+        '''
+        删除某股票的某个字段，会改写股票的static文件。
+        #t.remove_property('sh600000','tag1')
+        '''
+        file_name = self.get_static_file_from_id(stock_id)
+        f = open(file_name,'r',encoding='utf-8')
+        info = json.load(f)
+        f.close()
+        info[stock_id].pop(property_key)
+        self.logger.info(info)
+        with open(file_name,'w') as f:
+            f.write(json.dumps(info))
