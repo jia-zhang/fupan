@@ -4,13 +4,18 @@ import time
 import os
 import json
 import random
+from logger import Logger
+from stock_util import StockUtil
 
 class StockDump():
     def __init__(self):
         #self.stock_list_url = "http://quote.eastmoney.com/stocklist.html"
+        self.logger = Logger("StockDump")
         with open('last_dump_date.txt','r') as f:
             self.last_dump_date = f.read()
-        pass
+        self.stock_list_file = 'stocks.csv'
+        self.util = StockUtil()   
+
     
     def get_stock_list(self):
         '''
@@ -34,15 +39,7 @@ class StockDump():
                 ret.append(n)
         with open(file_name,'w') as f:
             f.write(",".join(ret))
-    
-    def get_stock_list_from_file(self,file_name):
-        '''
-        从csv文件中获取列表，返回一个数组
-        '''
-        with open(file_name,'r') as f:
-            output = f.read()
-        return output.split(',')
-    
+       
     def get_stock_detail(self,stock_id,time_range,count,retry_num=3):
         '''
         获取某股票在time_range内的动态数据，开盘价，收盘价之类。
@@ -60,7 +57,7 @@ class StockDump():
             ret = resp.text.replace('day','"day"').replace('open','"open"').replace('low','"low"')\
             .replace('high','"high"').replace('close','"close"').replace('volume','"volume"')
         except requests.exceptions.ConnectionError as e:
-            print("Connection error...exit")
+            self.logger.info("Connection error...exit")
             return ret
         except:
             #html=None
@@ -70,15 +67,7 @@ class StockDump():
                 return self.get_stock_detail(url,stock_id,time_range,count,retry_num-1)
         return ret
 
-    def get_last_trading_date(self):
-        '''
-        获取最近一次的交易日。获取上证指数的最后交易数据即可。
-        '''
-        #headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
-        detail_url = "http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=sh000001&scale=240&ma=no&datalen=5"
-        resp = requests.get(detail_url)
-        return eval(resp.text.replace('day','"day"').replace('open','"open"').replace('low','"low"').\
-        replace('high','"high"').replace('close','"close"').replace('volume','"volume"'))[-1]['day']
+    
     
     def dump_stock_dynamic(self,time_range,count):
         '''
@@ -87,43 +76,45 @@ class StockDump():
         新浪在多次请求后会timeout，多次调用次函数作为workaround.
         '''
         #cur_time = time.localtime().tm_hour
-        print(self.last_dump_date)
-        print(self.get_last_trading_date())
-        if self.last_dump_date == self.get_last_trading_date():
-            print("No new info needs to be dumped, today is %s, last_dump_date is %s, last_trading_date is %s"%(time.strftime('%Y-%m-%d',time.localtime(time.time())),self.last_dump_date,self.get_last_trading_date()))
+        self.logger.info(self.last_dump_date)
+        self.logger.info(self.util.get_last_trading_date())
+        if self.last_dump_date == self.util.get_last_trading_date():
+            self.logger.info("No new info needs to be dumped, today is %s, last_dump_date is %s, last_trading_date is %s"%(time.strftime('%Y-%m-%d',time.localtime(time.time())),self.last_dump_date,self.get_last_trading_date()))
             return
-        s_list = self.get_stock_list_from_file('valid_stock.csv')
+        s_list = self.util.get_valid_stock()
         for s in s_list:
-            print("Dumping stock dynamic %s..."%(s))
-            #if (os.path.exists("./data/dynamic/%s.json.d"%(s))):
-                #print("%s already exists, skip"%(s))
-            #    continue
-            stock_detail = self.get_stock_detail(s,240,10)
-            with open("./data/dynamic/%s.json.d"%(s),'w') as f:
+            #self.logger.info("Dumping stock dynamic %s..."%(s))
+            file_name = self.util.get_dynamic_file_from_id(s)
+            if (os.path.exists(file_name)):
+                #self.logger.info("%s already exists, skip"%(s))
+                continue
+            stock_detail = self.get_stock_detail(s,time_range,count)
+            with open("file_name",'w') as f:
                 f.write(stock_detail)
             
-    def dump_stock_static(self):
+    def dump_stock_static(self,stock_list,force=0):
         '''
         Get some very basic static information from xueqiu.com
+        if force==1, will overwrite exists json file, please be careful
         '''
-        s_list = self.get_stock_list_from_file('valid_stock.csv')
         headers={'User-Agent':'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36'}
         re_fload_shares = re.compile(r'"float_shares":(\d*?),')
         re_stock_name = re.compile(r'"name":(.*?),')
         re_market_capital = re.compile(r'"market_capital":(.*?),')
-        for s in s_list:
-            print("Dumping stock static %s..."%(s))
-            if (os.path.exists("./data/static/%s.json.s"%(s))):
-                print("%s already exists, skip"%(s))
+        for s in stock_list:
+            self.logger.info("Dumping stock static %s..."%(s))
+            file_name = self.util.get_static_file_from_id(s)
+            if (force==0 and os.path.exists(file_name)):
+                self.logger.info("%s already exists, skip"%(s))
                 continue
             try:
                 master_dict = {}
                 resp = requests.get("https://xueqiu.com/S/%s"%(s),headers=headers)
                 if (resp.status_code==404):
-                    print("Get code 404 on stock %s"%(s))                    
+                    self.logger.info("Get code 404 on stock %s"%(s))                    
                     continue
                 elif(resp.status_code!=200):
-                    print("Get code %s on stock %s"%(resp.status_code,s))
+                    self.logger.info("Get code %s on stock %s"%(resp.status_code,s))
                     continue
                 resp.encoding = 'utf-8'            
                 stock_dict = {}
@@ -131,15 +122,19 @@ class StockDump():
                 stock_dict['stock_name'] = str(re_stock_name.findall(resp.text)[0])
                 stock_dict['market_capital'] = str(re_market_capital.findall(resp.text)[0])
                 master_dict[s] = stock_dict
-                with open("./data/%s.static.json"%(s),'w') as f:
+                with open(file_name,'w') as f:
                     f.write(json.dumps(master_dict))
             except:
-                print("exception on stock %s!"%(s))
+                self.logger.info("exception on stock %s!"%(s))
     
 
 if __name__ == '__main__':
     t = StockDump()
-    t.dump_stock_dynamic(240,15)
+    t.logger.info("start")
+    stock_list = ['sz002940']
+    t.dump_stock_static(stock_list,1)
+    #t.dump_stock_dynamic(240,15)
+    t.logger.info("end")
     #print(t.get_stock_detail('sh000001',1,10))
     #t.save_stock_list("stocks.csv")
     #print(t.get_last_trading_date())
