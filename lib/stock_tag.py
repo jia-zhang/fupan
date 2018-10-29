@@ -6,26 +6,7 @@ class StockTag():
         self.util = StockUtil()
         pass
     
-    def add_propery(self,stock_id,property_dict):
-        file_name = "./data/static/%s.static.json"%(stock_id)
-        f = open(file_name,'r',encoding='utf-8')
-        info = json.load(f)
-        f.close()
-        for key in property_dict.keys():
-            info[stock_id][key] = property_dict[key]
-        print(info)
-        with open(file_name,'w') as f:
-            f.write(json.dumps(info))
     
-    def remove_property(self,stock_id,property_key):
-        file_name = "./data/static/%s.static.json"%(stock_id)
-        f = open(file_name,'r',encoding='utf-8')
-        info = json.load(f)
-        f.close()
-        info[stock_id].pop(property_key)
-        print(info)
-        with open(file_name,'w') as f:
-            f.write(json.dumps(info))
 
     def add_tag(self,stock_id,tags_to_add):
         '''

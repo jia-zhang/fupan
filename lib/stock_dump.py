@@ -50,6 +50,7 @@ class StockDump():
         detail_url = ("http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?"
                     "symbol=%s&scale=%s&ma=no&datalen=%s"
         )%(stock_id,time_range,count)
+        #self.logger.info(detail_url)
         try:
             resp = requests.get(detail_url,timeout=60)
             if resp.status_code!=200:
@@ -63,13 +64,11 @@ class StockDump():
             #html=None
             if retry_num>0:
             #如果不是200就重试，每次递减重试次数
-                #print("Non 200 respose, retry. Status_code=%s"%(resp.status_code))
+                self.logger.info("Non 200 respose, retry. Status_code=%s"%(resp.status_code))
                 return self.get_stock_detail(url,stock_id,time_range,count,retry_num-1)
-        return ret
-
+        return ret    
     
-    
-    def dump_stock_dynamic(self,time_range,count):
+    def dump_stock_dynamic(self,time_range,count,force=1):
         '''
         Get stock dynamic info, 10 days open,high,low,close,volume
         此函数在每天15：00之后调用一次即可。会存放在代码.dynamic.json文件里面。
@@ -81,15 +80,16 @@ class StockDump():
         if self.last_dump_date == self.util.get_last_trading_date():
             self.logger.info("No new info needs to be dumped, today is %s, last_dump_date is %s, last_trading_date is %s"%(time.strftime('%Y-%m-%d',time.localtime(time.time())),self.last_dump_date,self.get_last_trading_date()))
             return
-        s_list = self.util.get_valid_stock()
+        s_list = self.util.get_valid_stocks()
         for s in s_list:
-            #self.logger.info("Dumping stock dynamic %s..."%(s))
+            self.logger.info("Dumping stock dynamic %s..."%(s))
             file_name = self.util.get_dynamic_file_from_id(s)
-            if (os.path.exists(file_name)):
-                #self.logger.info("%s already exists, skip"%(s))
+            #self.logger.info(file_name)
+            if (force==0 and os.path.exists(file_name)):
+                self.logger.info("%s already exists, skip"%(s))
                 continue
             stock_detail = self.get_stock_detail(s,time_range,count)
-            with open("file_name",'w') as f:
+            with open(file_name,'w') as f:
                 f.write(stock_detail)
             
     def dump_stock_static(self,stock_list,force=0):
@@ -131,9 +131,9 @@ class StockDump():
 if __name__ == '__main__':
     t = StockDump()
     t.logger.info("start")
-    stock_list = ['sz002940']
-    t.dump_stock_static(stock_list,1)
-    #t.dump_stock_dynamic(240,15)
+    #stock_list = ['sz002940']
+    #t.dump_stock_static(stock_list,1)
+    t.dump_stock_dynamic(240,15)
     t.logger.info("end")
     #print(t.get_stock_detail('sh000001',1,10))
     #t.save_stock_list("stocks.csv")

@@ -8,16 +8,52 @@ from logger import Logger
 class StockUtil():
     def __init__(self):
         self.logger = Logger("StockUtil")
-        self.stock_list_file = "stocks.csv"
+        self.valid_stock_file = "valid_stock.csv"
         self.last_trading_day = self.get_last_trading_date()
         pass
     
-    def get_valid_stock(self):
-        return self.get_stock_list_from_file(self.stock_list_file)
+    def get_valid_stocks(self):
+        return self.get_stock_list_from_file(self.valid_stock_file)
+
+    def get_trading_stocks(self):
+        '''
+        返回一个目前正常交易的列表
+        '''
+        s_list = self.get_valid_stocks()
+        ret = []
+        for s in s_list:
+            file_name = self.get_dynamic_file_from_id(s)
+            output = self.check_file_and_read(file_name)
+            if output == '':
+                continue
+            stock_detail = eval(output)
+            if self.last_trading_day == stock_detail[-1]['day']:
+                ret.append(s)
+                #self.logger.info(self.get_stock_name_from_id(s))
+        return ret
+    
+    def get_suspend_stocks(self):
+        '''
+        返回一个停牌的列表
+        '''
+        s_list = self.get_valid_stocks()
+        ret = []
+        for s in s_list:
+            file_name = self.get_dynamic_file_from_id(s)
+            with open(file_name,'r') as f:
+                output = f.read()
+            if output == "null":
+                ret.append(s)
+                continue
+            stock_detail = eval(output)
+            if self.last_trading_day != stock_detail[-1]['day']:
+                ret.append(s)
+                self.logger.info(self.get_stock_name_from_id(s))
+        return ret
     
     def check_file_and_read(self,file_name):
         if not os.path.exists(file_name):
-            self.logger.info("File %s does not exist...Please check..."%(file_name))
+            self.logger.info("File %s does not exist...Please check...[check_file_and_read]"%(file_name))
             return ''
         with open(file_name,'r') as f:
             output = f.read()
@@ -46,7 +82,7 @@ class StockUtil():
         从csv文件中获取列表，返回一个数组
         '''
         if not os.path.exists(file_name):
-            self.logger.info("File %s does not exist, please check..."%(file_name))
+            self.logger.info("File %s does not exist, please check...[get_stock_list_from_file]"%(file_name))
             return []
         with open(file_name,'r') as f:
             output = f.read()
@@ -62,69 +98,87 @@ class StockUtil():
         return eval(resp.text.replace('day','"day"').replace('open','"open"').replace('low','"low"').\
         replace('high','"high"').replace('close','"close"').replace('volume','"volume"'))[-1]['day']
     
-    def get_suspend_stocks(self,stock_list):
-        '''
-        返回一个停牌的列表
-        '''
-        with open('valid_stock.csv','r') as f:
-            output = f.read()
-        s_list = output.split(',')
-        ret = []
-        for s in s_list:
-            file_name = "./data/dynamic/%s.json.d"%(s)
-            with open(file_name,'r') as f:
-                output = f.read()
-            if output == "null":
-                ret.append(s)
-                continue
-            stock_detail = eval(output)
-            if self.last_trading_day != stock_detail[-1]['day']:
-                ret.append(s)
-                self.logger.info(self.get_name_from_stock_id(s))
-        return ret
+    
     
     def get_delta(self,stock_id,day_num):
         '''
         获取day_num天前到目前收盘价的delta值，以%表示。
-        如果day_num=0,表示今天的收盘价和今天收盘价的差值，所以会返回0
+        day_num取值在1~10之间，太长或者等于0没有意义。
+        day_num = 1（1天前的收盘价和最后一天收盘价的delta）
+        day_num = 10（10天前的收盘价和最后一天收盘价的delta）
         '''
+        if day_num<=0 or day_num>10:
+            self.logger.info("Please specify a daynum which between 1~10...")
+            return 0 
         file_name = self.get_dynamic_file_from_id(stock_id)
         output = self.check_file_and_read(file_name)
         if output=='':
             return 0
         stock_detail = eval(output)
-        if abs(-1+day_num)>len(stock_detail):
+        if abs(-1-day_num)>len(stock_detail):
             #print("%s:No data on day %s"%(stock_id,day_num))
             return 0
         if self.last_trading_day != stock_detail[-1]['day']:
             #print("停牌或者怎样了%s"%(stock_id))
             return 0
-        price_start = float(stock_detail[-1+day_num]['close'])
+        price_start = float(stock_detail[-1-day_num]['close'])
         #print(price_start)        
         price_end = float(stock_detail[-1]['close'])
         #print(price_end)
         lift_status = (price_end-price_start)*100/price_start
         return lift_status
-
-    def get_increase_amount(self,stock_id,day_num):
+    
+    def get_lift_in_one_day(self,stock_id,day_num):
         '''
-        获取某股票前day_num的当天涨跌幅。需要保证动态数据json文件里面有值，否则会报错(to be fixed)
-        比如，获取前一天的get_increase_amount('sz000002',-1)
+        获取前day_num天的高点到收盘价的差值，用来回避大阴线。
+        day_num取值在0~9之间。
         '''
+        if day_num<0 or day_num>9:
+            self.logger.info("Please specify a daynum which between 0~9...")
+            return 0 
         file_name = self.get_dynamic_file_from_id(stock_id)
         output = self.check_file_and_read(file_name)
         if output=='':
             return 0
         stock_detail = eval(output)
-        if abs(-2+day_num)>len(stock_detail):
+        if abs(-1-day_num)>len(stock_detail):
             self.logger.info("%s:No data on day %s"%(stock_id,day_num))
             return 0     
         if self.last_trading_day != stock_detail[-1]['day']:
             self.logger.info("Stock %s's last trading day not equals to sh000001's last trading day, please check..."%(stock_id))
             return 0   
-        price_start = float(stock_detail[-2+day_num]['close'])
+        price_high = float(stock_detail[-1-day_num]['high'])
         #print(price_start)        
-        price_end = float(stock_detail[-1+day_num]['close'])
+        price_end = float(stock_detail[-1-day_num]['close'])
+        #print(price_end)
+        lift_status = (price_end-price_high)*100/price_high
+        return lift_status
+
+
+    def get_increase_amount(self,stock_id,day_num):
+        '''
+        获取某股票前day_num的当天涨跌幅。需要保证动态数据json文件里面有值，否则会报错(to be fixed)
+        day_num取值范围在0~9之间。
+        比如，获取前一天的get_increase_amount('sz000002',1)
+        获取最后一天的get_increase_amount('sz000002',0)
+        '''
+        if day_num<0 or day_num>9:
+            self.logger.info("Please specify a daynum which between 0~9...")
+            return 0 
+        file_name = self.get_dynamic_file_from_id(stock_id)
+        output = self.check_file_and_read(file_name)
+        if output=='':
+            return 0
+        stock_detail = eval(output)
+        if abs(-2-day_num)>len(stock_detail):
+            self.logger.info("%s:No data on day %s"%(stock_id,day_num))
+            return 0     
+        if self.last_trading_day != stock_detail[-1]['day']:
+            self.logger.info("Stock %s's last trading day not equals to sh000001's last trading day, please check..."%(stock_id))
+            return 0   
+        price_start = float(stock_detail[-2-day_num]['close'])
+        #print(price_start)        
+        price_end = float(stock_detail[-1-day_num]['close'])
         #print(price_end)
         lift_status = (price_end-price_start)*100/price_start
         return lift_status
@@ -186,3 +240,8 @@ class StockUtil():
         self.logger.info(info)
         with open(file_name,'w') as f:
             f.write(json.dumps(info))
+
+if __name__ == '__main__':
+    t = StockUtil()
+    print(t.get_suspend_stocks())
+    #print(t.get_increase_amount('sz000002',0))
