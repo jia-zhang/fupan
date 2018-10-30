@@ -4,6 +4,8 @@ import time
 import os
 import json
 import random
+import datetime
+import subprocess
 from logger import Logger
 from stock_util import StockUtil
 
@@ -127,16 +129,34 @@ class StockDump():
             except:
                 self.logger.info("exception on stock %s!"%(s))
     
+    def zip_dynamic(self,folder):
+        cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
+        zip_cmd = "7z a dynamic_%s.zip %s"%(cur_date,folder)
+        return subprocess.Popen(zip_cmd,shell=True) 
+    
+    def upload_dynamic(self,s3_bucket):
+        cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
+        upload_cmd = "aws s3 cp dynamic_%s.zip %s/dynamic_%s.zip"%(cur_date,s3_bucket,cur_date)
+        return subprocess.Popen(upload_cmd,shell=True)
+    
+    def download_dynamic(self,s3_bucket):
+        cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
+        download_cmd = "aws s3 cp %s/dynamic_%s.zip ."%(s3_bucket,cur_date)
+        return subprocess.Popen(download_cmd,shell=True)
+
+    def unzip_dynamic(self,folder):
+        cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
+        zip_cmd = "7z x dynamic_%s.zip -o%s -aoa"%(cur_date,folder)
+        return subprocess.Popen(zip_cmd,shell=True) 
 
 if __name__ == '__main__':
     t = StockDump()
     t.logger.info("start")
-    #stock_list = ['sz002940']
-    #t.dump_stock_static(stock_list,1)
-    t.dump_stock_dynamic(240,15)
+    #t.zip_dynamic('./data/dynamic')
+    #t.upload_dynamic('s3://g1-build/tmp')
+    t.download_dynamic('s3://g1-build/tmp')
+    t.unzip_dynamic('./data')
+    #t.dump_stock_dynamic(240,15)
     t.logger.info("end")
-    #print(t.get_stock_detail('sh000001',1,10))
-    #t.save_stock_list("stocks.csv")
-    #print(t.get_last_trading_date())
-    #print(t.get_stock_detail('sz000007',240,10))
+
 
