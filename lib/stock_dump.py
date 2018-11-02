@@ -132,7 +132,7 @@ class StockDump():
     
     def zip_dynamic(self,folder):
         cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
-        zip_cmd = "7z a dynamic_%s.zip %s"%(cur_date,folder)
+        zip_cmd = "7za a dynamic_%s.zip %s"%(cur_date,folder)
         return subprocess.Popen(zip_cmd,shell=True) 
     
     def upload_dynamic(self,s3_bucket):
@@ -149,14 +149,18 @@ class StockDump():
         cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
         zip_cmd = "7z x dynamic_%s.zip -o%s -aoa"%(cur_date,folder)
         return subprocess.Popen(zip_cmd,shell=True) 
+    
+    def zip_and_upload(self,folder,s3_bucket):
+        pass
 
 if __name__ == '__main__':
     t = StockDump()
     t.logger.info("start")
-    #t.zip_dynamic('./data/dynamic')
+    t.dump_stock_dynamic(240,15)
+    t.zip_dynamic('./data/dynamic')
     #t.upload_dynamic('s3://g1-build/tmp')
-    t.download_dynamic('s3://g1-build/tmp')
-    t.unzip_dynamic('./data')
+    #t.download_dynamic('s3://g1-build/tmp')
+    #t.unzip_dynamic('./data')
     #t.dump_stock_dynamic(240,15)
     t.logger.info("end")
 
