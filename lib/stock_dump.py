@@ -7,6 +7,7 @@ import json
 import random
 import datetime
 import subprocess
+import sys
 from logger import Logger
 from stock_util import StockUtil
 
@@ -17,8 +18,18 @@ class StockDump():
         with open('last_dump_date.txt','r') as f:
             self.last_dump_date = f.read()
         self.stock_list_file = 'stocks.csv'
-        self.util = StockUtil()   
+        self.util = StockUtil()
+        if 'linux' in sys.platform:
+            self.zip_cmd = '7za'
+        else:
+            self.zip_cmd = '7z'
 
+    def download_valid_stock_list(self):        
+        local_file = "valid_stock.csv"
+        download_url = "https://s3.eu-central-1.amazonaws.com/g1-build/tmp/%s"%(local_file)
+        r = requests.get(download_url) 
+        with open(local_file, "wb") as f:
+            f.write(r.content)
     
     def get_stock_list(self):
         '''
@@ -95,7 +106,7 @@ class StockDump():
             with open(file_name,'w') as f:
                 f.write(stock_detail)
             
-    def dump_stock_static(self,stock_list,force=0):
+    def dump_stock_static(self,force=0):
         '''
         Get some very basic static information from xueqiu.com
         if force==1, will overwrite exists json file, please be careful
@@ -104,7 +115,8 @@ class StockDump():
         re_fload_shares = re.compile(r'"float_shares":(\d*?),')
         re_stock_name = re.compile(r'"name":(.*?),')
         re_market_capital = re.compile(r'"market_capital":(.*?),')
-        for s in stock_list:
+        s_list = self.util.get_valid_stocks()
+        for s in s_list:
             self.logger.info("Dumping stock static %s..."%(s))
             file_name = self.util.get_static_file_from_id(s)
             if (force==0 and os.path.exists(file_name)):
@@ -132,22 +144,48 @@ class StockDump():
     
     def zip_dynamic(self,folder):
         cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
-        zip_cmd = "7za a dynamic_%s.zip %s"%(cur_date,folder)
+        zip_cmd = "%s a dynamic_%s.zip %s"%(self.zip_cmd,cur_date,folder)
         return subprocess.Popen(zip_cmd,shell=True) 
     
     def upload_dynamic(self,s3_bucket):
         cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
-        upload_cmd = "aws s3 cp dynamic_%s.zip %s/dynamic_%s.zip"%(cur_date,s3_bucket,cur_date)
+        upload_cmd = "aws s3 cp dynamic_%s.zip %s/dynamic_%s.zip --acl public-read"%(cur_date,s3_bucket,cur_date)
         return subprocess.Popen(upload_cmd,shell=True)
     
-    def download_dynamic(self,s3_bucket):
+    def download_dynamic_from_s3(self,s3_bucket):
         cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
         download_cmd = "aws s3 cp %s/dynamic_%s.zip ."%(s3_bucket,cur_date)
         return subprocess.Popen(download_cmd,shell=True)
+    
+    def download_dynamic_from_url(self):
+        cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
+        local_file = "dynamic_%s.zip"%(cur_date)
+        download_url = "https://s3.eu-central-1.amazonaws.com/g1-build/tmp/dynamic_%s.zip"%(cur_date)
+        r = requests.get(download_url) 
+        with open(local_file, "wb") as f:
+            f.write(r.content)
+    
+    def download_static_from_url(self):
+        local_file = "static.zip"
+        download_url = "https://s3.eu-central-1.amazonaws.com/g1-build/tmp/%s"%(local_file)
+        r = requests.get(download_url) 
+        with open(local_file, "wb") as f:
+            f.write(r.content)
+    
+    def download_valid_stock_list(self):
+        local_file = "valid_stock.csv"
+        download_url = "https://s3.eu-central-1.amazonaws.com/g1-build/tmp/%s"%(local_file)
+        r = requests.get(download_url) 
+        with open(local_file, "wb") as f:
+            f.write(r.content)
 
     def unzip_dynamic(self,folder):
         cur_date = datetime.datetime.now().strftime('%Y_%m_%d')
-        zip_cmd = "7z x dynamic_%s.zip -o%s -aoa"%(cur_date,folder)
+        zip_cmd = "%s x dynamic_%s.zip -o%s -aoa"%(self.zip_cmd,cur_date,folder)
+        return subprocess.Popen(zip_cmd,shell=True) 
+
+    def unzip_static(self,folder):
+        zip_cmd = "%s x static.zip -o%s -aoa"%(self.zip_cmd,folder)
         return subprocess.Popen(zip_cmd,shell=True) 
     
     def zip_and_upload(self,folder,s3_bucket):
@@ -158,10 +196,10 @@ if __name__ == '__main__':
     t.logger.info("start")
     t.dump_stock_dynamic(240,15)
     t.zip_dynamic('./data/dynamic')
-    #t.upload_dynamic('s3://g1-build/tmp')
+    t.upload_dynamic('s3://g1-build/tmp')
     #t.download_dynamic('s3://g1-build/tmp')
     #t.unzip_dynamic('./data')
     #t.dump_stock_dynamic(240,15)
-    t.logger.info("end")
+    #t.logger.info("end")
 
 
